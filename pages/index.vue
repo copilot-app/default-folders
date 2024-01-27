@@ -1,3 +1,8 @@
+<script scoped>
+import Dropzone from '../components/Dropzone'
+
+</script>
+
 <template>
   <div class='wrapper'>
     <div class="content">
@@ -8,9 +13,7 @@
       <div>
         <h2>File & Folder Configuration</h2>
       </div>
-      <div class='dropzone'>
-        Dropzone Placeholder
-      </div>
+      <Dropzone/>
     </div>
   </div>
 </template>
