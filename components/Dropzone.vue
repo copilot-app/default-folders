@@ -1,18 +1,83 @@
 <script setup>
-import {ref, onMounted} from 'vue'
+import {ref, computed, onMounted} from 'vue'
+import {v4 as uuid} from 'uuid'
+
+const texts = {
+  drag: "Drag your files here...",
+  drop: "Drop your file!"
+}
 const input = ref(null)
+const inputStyle = ref("dropzone")
+const inputText = ref(texts.drag)
+const files = ref([])
+
+
+const handleDefaultEvent = (event)=>{
+  event.preventDefault()
+  event.stopPropagation()
+}
+
+const handleDragover = (event) => {
+  handleDefaultEvent(event)
+  inputStyle.value = 'dropzone dropzone-dragging'
+  inputText.value = texts.drop
+}
+
+const handleDragleave = (event) => {
+  handleDefaultEvent(event)
+  inputStyle.value = "dropzone"
+  inputText.value = texts.drag
+}
+
+const handleDrop = (event) => { 
+  handleDefaultEvent(event)
+  inputStyle.value = "dropzone"
+  inputText.value = texts.drag
+  console.log(event.dataTransfer.files)
+  for (const f of event.dataTransfer.files){
+    files.value.push(f);
+  }
+}
+
+const fileNames = computed(()=>{
+  return files.value.map((f) => f.name)
+})
+
 
 onMounted(()=>{
   console.log(input.value)
 })
 
 </script>
+
+////////////////////////////////////////////////////////////////////////////////
+
 <template>
-  <div class='dropzone'>
-    <span>Drop your files here</span>
+  <div 
+    v-bind:class="inputStyle"
+    draggeable
+    @drag="handleDefaultEvent"
+    @dragstart="handleDefaultEvent"
+    @dragend="handleDefaultEvent"
+    @dragover="handleDragover"
+    @dragenter="handleDefaultEvent"
+    @dragleave="handleDragleave"
+    @drop="handleDrop"
+    >
+    <span>{{ inputText }}</span>
     <input ref='input' type='file' name='files' class='dropzone-input' multiple/>
   </div>
+  <div class='files'>
+    <ul>
+      <li class='file' v-for="f in fileNames" :key="uuid()">
+        <span>{{ f }}</span>
+      </li>
+    </ul>
+  </div>
 </template>
+
+////////////////////////////////////////////////////////////////////////////////
+
 <style scoped>
 .dropzone {
   border: 0.2rem dashed #DDD;
@@ -38,4 +103,11 @@ onMounted(()=>{
     display: none;
   }
 }
+.file{
+  border: solid 1px;
+  padding: .25rem;
+  border-color: #AAA;
+  margin: 3px;
+}
+
 </style >
