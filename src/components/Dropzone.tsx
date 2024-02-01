@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
-import { useState, useEffect, useRef } from "react";
+import { DragEventHandler, useState, useEffect, useRef } from "react";
 
 const texts = {
   drop: "Drop!",
@@ -11,38 +11,41 @@ const Component = () => {
   const inputRef = useRef(null);
   const [dropzoneClass, setDropzoneClass] = useState("dropzone");
   const [dzText, setDzText] = useState(texts.drag);
-  const [files, setFiles] = useState([]);
+  const [files, setFiles] = useState<Array<{name: string}>>([]);
 
-  const handleDefaults = (event) => {
+  const handleDefaults = (event: Event) => {
     event.preventDefault();
     event.stopPropagation();
   };
 
-  const handleDragover = (event) => {
+  const handleDragover = (event: Event) => {
     handleDefaults(event);
     setDzText(texts.drop);
     setDropzoneClass("dropzone dropzone-dragging");
   };
 
-  const handleDragleave = (event) => {
+  const handleDragleave = (event: Event) => {
     handleDefaults(event);
     setDzText(texts.drag);
     setDropzoneClass("dropzone");
   };
 
-  const handleDrop = (event) => {
+  const handleDrop = (event: CustomEvent & {dataTransfer?: DataTransfer}) => {
     handleDefaults(event);
     setDzText(texts.drag);
     setDropzoneClass("dropzone");
+    if (event?.dataTransfer?.files && event?.dataTransfer?.files?.length > 0) {
+      setFiles((prev) => {
+        //@ts-ignore
+        return [...prev, ...event.dataTransfer.files];
+      });
+    }
+  };
+
+  const rmFile = (idx: number) => {
     setFiles((prev) => {
-      return [...prev, ...event.dataTransfer.files];
+      return prev.splice(idx);
     });
-  };
-
-  const rmFile = (idx) => {
-    setFiles((prev)=>{
-      return prev.splice(idx)
-    })
   };
 
   useEffect(() => {
@@ -53,11 +56,17 @@ const Component = () => {
     <Style>
       <div
         className={dropzoneClass}
+        // @ts-ignore
         onDragOver={handleDragover}
+        // @ts-ignore
         onDrop={handleDrop}
+        // @ts-ignore
         onDragStart={handleDefaults}
+        // @ts-ignore
         onDrag={handleDefaults}
+        // @ts-ignore
         onDragEnter={handleDefaults}
+        // @ts-ignore
         onDragLeave={handleDragleave}
       >
         <input ref={inputRef} className="dropzone-input" type="file" multiple />
@@ -66,18 +75,18 @@ const Component = () => {
       <div>
         {files.map((f, idx) => (
           <div key={uuid()} className="file-grid">
-            <div>{f.name}</div>
+            <div>{f?.name}</div>
             <div>
               <button
                 onClick={() => {
-                  rmFile(idx);
+                  rmFile(idx );
                 }}
               >
                 X
               </button>
             </div>
           </div>
-        ))}
+      ))}
       </div>
     </Style>
   );
