@@ -2,5 +2,12 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
   pages: true,
-  modules: ['@nuxtjs/tailwindcss'],
+  modules: [
+    '@nuxtjs/tailwindcss',
+  ],
+  build: {
+    transpile: [
+      "node_modules/copilot-node-sdk"
+    ]
+  }
 })

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import {copilotApi} from 'copilot-node-sdk'
 
 const COPILOT_API_KEY = process.env?.COPILOT_API_KEY
 const COPILOT_API_VERSION = process.env?.COPILOT_API_VERSION || "v1"
@@ -6,6 +7,10 @@ const COPILOT_API_URL = process.env?.COPILOT_API_URL
 
 
 export default defineEventHandler(async(event) => {
+  const copilot = copilotApi({
+    apiKey: COPILOT_API_KEY,
+    token: ""
+  })
   
   if (typeof COPILOT_API_KEY === 'undefined'){
     return setResponseStatus(event, 401)
