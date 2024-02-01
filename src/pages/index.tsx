@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 export default function Home() {
   return (
     <Style>
-      <h1>Default Folders</h1>
+      <h1>Default Folders App</h1>
       <Dropzone/>
     </Style>
   );
