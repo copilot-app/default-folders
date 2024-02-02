@@ -2,6 +2,7 @@ import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 //import axios from "axios";
 import { useState, useEffect, useRef } from "react";
+import { getFileMetadata } from "@/shared/getFileMime";
 import { HTMLAttributes } from "react";
 
 const texts = {
@@ -77,9 +78,17 @@ const Component = () => {
   const handleSubmit = async()=>{
     console.log("Sending request for signedUrl")
 
-    for (const f of files){
-      console.log(f)
+    const mapFilesToMime = []
+    
+    for (let i = 0; i < files.length; i++){
+      const mime = await getFileMetadata(files[i])
+      mapFilesToMime.push({
+        resource: files[i],
+        mime
+      })
     }
+
+    console.log(mapFilesToMime)
 
     //const res = await axios({
     //  method: "POST",
