@@ -1,17 +1,24 @@
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
-import { DragEventHandler, useState, useEffect, useRef } from "react";
+//import axios from "axios";
+import { useState, useEffect, useRef } from "react";
+import { HTMLAttributes } from "react";
 
 const texts = {
   drop: "Drop!",
   drag: "Drag your files here...",
 };
 
+type Feature = null | 'file-system' | 'webkit'
+
+const URL = process?.env?.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+
 const Component = () => {
   const inputRef = useRef(null);
   const [dropzoneClass, setDropzoneClass] = useState("dropzone");
   const [dzText, setDzText] = useState(texts.drag);
-  const [files, setFiles] = useState<Array<{name: string}>>([]);
+  const [files, setFiles] = useState<Array<{name: string, type: string}>>([]);
+  const [feature, setFeature] = useState<Feature>(null)
 
   const handleDefaults = (event: Event) => {
     event.preventDefault();
@@ -34,12 +41,24 @@ const Component = () => {
     handleDefaults(event);
     setDzText(texts.drag);
     setDropzoneClass("dropzone");
-    if (event?.dataTransfer?.files && event?.dataTransfer?.files?.length > 0) {
-      setFiles((prev) => {
-        //@ts-ignore
-        return [...prev, ...event.dataTransfer.files];
-      });
-    }
+    const resources = [...event.dataTransfer.items].filter((item)=>{
+      return item.kind === 'file'
+    }).map((item) => {
+      if (!feature){
+        // No directory support detected
+        return
+      }else{
+        if (feature === 'webkit'){
+          return item.webkitGetAsEntry()
+        }else{
+          return item.getAsFileSystemHandle()
+        }
+      }
+    })
+    console.dir(resources[0])
+    setFiles((prev)=>{
+      return [...prev, ...resources]
+    })
   };
 
   const rmFile = (idx: number) => {
@@ -48,9 +67,39 @@ const Component = () => {
     });
   };
 
-  useEffect(() => {
-    console.log(inputRef);
-  }, []);
+  const handleSubmit = async()=>{
+    console.log("Sending request for signedUrl")
+
+    for (const f of files){
+      console.log(f)
+    }
+
+    //const res = await axios({
+    //  method: "POST",
+    //  url: `${URL}/api/signed-url`,
+    //  data: {
+    //    files: files.map((f)=>({key: f.name, mime: f.type}))
+    //  },
+    //  headers: {
+    //    "ContentType": "application/json"
+    //  }
+    //})
+
+    //console.log(res)
+
+    console.log("Sending files to S3")
+  }
+
+  useEffect(()=>{
+    if (window){
+      if ('getAsFileSystemHandle' in window.DataTransferItem.prototype){
+        setFeature('file-system')
+      }
+      if ('webkitGetAsEntry' in window.DataTransferItem.prototype){
+        setFeature('webkit')
+      }
+    }
+  }, [])
 
   return (
     <Style>
@@ -69,17 +118,18 @@ const Component = () => {
         // @ts-ignore
         onDragLeave={handleDragleave}
       >
-        <input ref={inputRef} className="dropzone-input" type="file" multiple />
+        {/* @ts-expect-error */}
+        <input ref={inputRef} className="dropzone-input" type="file" multiple webkitdirectory='' mozdirectory='' directory=''/>
         <span>{dzText}</span>
       </div>
       <div>
         {files.map((f, idx) => (
           <div key={uuid()} className="file-grid">
-            <div>{f?.name}</div>
+            <div>{`${f?.isDirectory ? "📁 " : ""}${f?.name}`}</div>
             <div>
               <button
                 onClick={() => {
-                  rmFile(idx );
+                  rmFile(idx);
                 }}
               >
                 X
@@ -88,6 +138,10 @@ const Component = () => {
           </div>
       ))}
       </div>
+      <button
+        onClick={handleSubmit}
+        className="submit-button"
+      >submit</button>
     </Style>
   );
 };
@@ -128,6 +182,14 @@ const Style = styled.div`
     .file {
       margin: 3px;
     }
+  }
+  .submit-button{
+    color: #444;
+    border: solid 2px;
+    border-radius: 3px;
+    border-color: #4F8;
+    padding: .25rem;
+    text-transform: uppercase;
   }
 `;
 
