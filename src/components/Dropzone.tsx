@@ -10,14 +10,20 @@ const texts = {
 };
 
 type Feature = null | 'file-system' | 'webkit'
+type DataTransferItem = {
+  name: string,
+  isDirectory: boolean,
+  isFile: boolean
+}
 
 const URL = process?.env?.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+
 
 const Component = () => {
   const inputRef = useRef(null);
   const [dropzoneClass, setDropzoneClass] = useState("dropzone");
   const [dzText, setDzText] = useState(texts.drag);
-  const [files, setFiles] = useState<Array<{name: string, type: string}>>([]);
+  const [files, setFiles] = useState<Array<DataTransferItem>>([]);
   const [feature, setFeature] = useState<Feature>(null)
 
   const handleDefaults = (event: Event) => {
@@ -37,11 +43,12 @@ const Component = () => {
     setDropzoneClass("dropzone");
   };
 
-  const handleDrop = (event: CustomEvent & {dataTransfer?: DataTransfer}) => {
+  const handleDrop = (event: CustomEvent & {dataTransfer: DataTransfer}) => {
     handleDefaults(event);
     setDzText(texts.drag);
     setDropzoneClass("dropzone");
-    const resources = [...event.dataTransfer.items].filter((item)=>{
+    // @ts-ignore
+    const resources = [...event?.dataTransfer?.items].filter((item)=>{
       return item.kind === 'file'
     }).map((item) => {
       if (!feature){
