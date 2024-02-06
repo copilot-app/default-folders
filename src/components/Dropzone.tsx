@@ -1,31 +1,29 @@
+import { getFileMetadata } from "@/shared/getFileMime";
+import axios from "axios";
+import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
-//import axios from "axios";
-import { useState, useEffect, useRef } from "react";
-import { getFileMetadata } from "@/shared/getFileMime";
-import { HTMLAttributes } from "react";
 
 const texts = {
   drop: "Drop!",
   drag: "Drag your files here...",
 };
 
-type Feature = null | 'file-system' | 'webkit'
+type Feature = null | "file-system" | "webkit";
 type DataTransferItem = {
-  name: string,
-  isDirectory: boolean,
-  isFile: boolean
-}
+  name: string;
+  isDirectory: boolean;
+  isFile: boolean;
+};
 
-const URL = process?.env?.NEXT_PUBLIC_API_URL || "http://localhost:3001"
-
+const URL = process?.env?.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 const Component = () => {
   const inputRef = useRef(null);
   const [dropzoneClass, setDropzoneClass] = useState("dropzone");
   const [dzText, setDzText] = useState(texts.drag);
   const [files, setFiles] = useState<Array<DataTransferItem>>([]);
-  const [feature, setFeature] = useState<Feature>(null)
+  const [feature, setFeature] = useState<Feature>(null);
 
   const handleDefaults = (event: Event) => {
     event.preventDefault();
@@ -44,29 +42,30 @@ const Component = () => {
     setDropzoneClass("dropzone");
   };
 
-  const handleDrop = (event: CustomEvent & {dataTransfer: DataTransfer}) => {
+  const handleDrop = (event: CustomEvent & { dataTransfer: DataTransfer }) => {
     handleDefaults(event);
     setDzText(texts.drag);
     setDropzoneClass("dropzone");
     // @ts-ignore
-    const resources = [...event?.dataTransfer?.items].filter((item)=>{
-      return item.kind === 'file'
-    }).map((item) => {
-      if (!feature){
-        // No directory support detected
-        return
-      }else{
-        if (feature === 'webkit'){
-          return item.webkitGetAsEntry()
-        }else{
-          return item.getAsFileSystemHandle()
+    const resources = [...event?.dataTransfer?.items]
+      .filter((item) => {
+        return item.kind === "file";
+      })
+      .map((item) => {
+        if (!feature) {
+          // No directory support detected
+          return;
+        } else {
+          if (feature === "webkit") {
+            return item.webkitGetAsEntry();
+          } else {
+            return item.getAsFileSystemHandle();
+          }
         }
-      }
-    })
-    console.dir(resources[0])
-    setFiles((prev)=>{
-      return [...prev, ...resources]
-    })
+      });
+    setFiles((prev) => {
+      return [...prev, ...resources];
+    });
   };
 
   const rmFile = (idx: number) => {
@@ -75,47 +74,77 @@ const Component = () => {
     });
   };
 
-  const handleSubmit = async()=>{
-    console.log("Sending request for signedUrl")
+  const handleSubmit = async () => {
+    const mapFilesToMime: Array<{
+      mime: string;
+      key: string;
+      resource: object;
+      uploadConfig?: {
+        key: string;
+        url: string;
+      };
+    }> = [];
 
-    const mapFilesToMime = []
-    
-    for (let i = 0; i < files.length; i++){
-      const mime = await getFileMetadata(files[i])
+    for (let i = 0; i < files.length; i++) {
+      const mime: string = await getFileMetadata(files[i]);
+      const key: string = files[i].name;
+
       mapFilesToMime.push({
         resource: files[i],
-        mime
-      })
+        mime,
+        key,
+      });
     }
 
-    console.log(mapFilesToMime)
+    const res = await axios({
+      method: "POST",
+      url: `${URL}/api/signed-url`,
+      data: {
+        files: mapFilesToMime.map((entry) => ({
+          key: entry.key,
+          mime: entry.mime,
+        })),
+      },
+      headers: {
+        ContentType: "application/json",
+      },
+    });
 
-    //const res = await axios({
-    //  method: "POST",
-    //  url: `${URL}/api/signed-url`,
-    //  data: {
-    //    files: files.map((f)=>({key: f.name, mime: f.type}))
-    //  },
-    //  headers: {
-    //    "ContentType": "application/json"
-    //  }
-    //})
+    const mapSignedUrls = res.data;
 
-    //console.log(res)
-
-    console.log("Sending files to S3")
-  }
-
-  useEffect(()=>{
-    if (window){
-      if ('getAsFileSystemHandle' in window.DataTransferItem.prototype){
-        setFeature('file-system')
+    const uploadFiles = [];
+    for (const entry of mapFilesToMime) {
+      entry.uploadConfig = mapSignedUrls[entry.key];
+      if (!entry.uploadConfig){
+        continue
       }
-      if ('webkitGetAsEntry' in window.DataTransferItem.prototype){
-        setFeature('webkit')
+      console.log("url", entry.uploadConfig.url)
+      console.log("resource", entry.resource)
+      console.log("mime", entry.mime)
+
+      uploadFiles.push(
+        axios.put(entry.uploadConfig?.url, entry.resource, {
+          headers: {
+            "Content-Type": entry.mime,
+          },
+        })
+      );
+    }
+    
+    await Promise.all(uploadFiles)
+
+  };
+
+  useEffect(() => {
+    if (window) {
+      if ("getAsFileSystemHandle" in window.DataTransferItem.prototype) {
+        setFeature("file-system");
+      }
+      if ("webkitGetAsEntry" in window.DataTransferItem.prototype) {
+        setFeature("webkit");
       }
     }
-  }, [])
+  }, []);
 
   return (
     <Style>
@@ -135,7 +164,15 @@ const Component = () => {
         onDragLeave={handleDragleave}
       >
         {/* @ts-expect-error */}
-        <input ref={inputRef} className="dropzone-input" type="file" multiple webkitdirectory='' mozdirectory='' directory=''/>
+        <input
+          ref={inputRef}
+          className="dropzone-input"
+          type="file"
+          multiple
+          webkitdirectory=""
+          mozdirectory=""
+          directory=""
+        />
         <span>{dzText}</span>
       </div>
       <div>
@@ -152,12 +189,11 @@ const Component = () => {
               </button>
             </div>
           </div>
-      ))}
+        ))}
       </div>
-      <button
-        onClick={handleSubmit}
-        className="submit-button"
-      >submit</button>
+      <button onClick={handleSubmit} className="submit-button">
+        submit
+      </button>
     </Style>
   );
 };
@@ -199,12 +235,12 @@ const Style = styled.div`
       margin: 3px;
     }
   }
-  .submit-button{
+  .submit-button {
     color: #444;
     border: solid 2px;
     border-radius: 3px;
-    border-color: #4F8;
-    padding: .25rem;
+    border-color: #4f8;
+    padding: 0.25rem;
     text-transform: uppercase;
   }
 `;

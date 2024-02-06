@@ -1,5 +1,4 @@
 const getMime = (signature)=>{
-  console.log(signature)
   switch (signature) {
       case '89504E47':
           return 'image/png'
@@ -30,7 +29,7 @@ const getMime = (signature)=>{
   } 
 }
 
-export async function getFileMetadata(entry) {
+export async function getFileMetadata(entry): Promise<string> {
   return new Promise((resolve, reject) => {
     entry.file((file) => {
       let reader = new FileReader();
