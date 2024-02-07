@@ -23,23 +23,8 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ResponseData | { message: string }>
 ) {
-  if (req.method === "GET") {
+  if (req.method === "POST") {
     res.status(405).json({ message: "GET Not Allowed" });
   }
-
-  const parse = BodySchema.safeParse(req.body);
-
-  if (!parse.success) {
-    res.status(400).json({ message: "Invalid request body" });
-  }
-
-  const files = req.body.files;
-  const signedUrls = {};
-  for (let i = 0; i < files.length; i++) {
-    const url = await getSignedURL(files[i].key, files[i].mime);
-    console.log(url)
-    Object.assign(signedUrls, {[files[i].key]: url})
-  }
-
-  res.status(200).json(signedUrls);
+  
 }

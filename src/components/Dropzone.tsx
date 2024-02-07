@@ -1,4 +1,4 @@
-import { getFileMetadata } from "@/shared/getFileMime";
+import * as fileUtils from "@/shared/file-utils";
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
@@ -86,7 +86,7 @@ const Component = () => {
     }> = [];
 
     for (let i = 0; i < files.length; i++) {
-      const mime: string = await getFileMetadata(files[i]);
+      const mime: string = await fileUtils.getFileMetadata(files[i]);
       const key: string = files[i].name;
 
       mapFilesToMime.push({
@@ -115,23 +115,21 @@ const Component = () => {
     const uploadFiles = [];
     for (const entry of mapFilesToMime) {
       entry.uploadConfig = mapSignedUrls[entry.key];
-      if (!entry.uploadConfig){
-        continue
+      if (!entry.uploadConfig) {
+        continue;
       }
-      console.log("url", entry.uploadConfig.url)
-      console.log("resource", entry.resource)
-      console.log("mime", entry.mime)
 
-      uploadFiles.push(
-        axios.put(entry.uploadConfig?.url, entry.resource, {
-          headers: {
-            "Content-Type": entry.mime,
-          },
-        })
-      );
+      const url = entry.uploadConfig.url
+      const file = await fileUtils.getFile(entry.resource)
+      const mimeType = entry.mime
+ 
+      const uploadResp = await axios.put(url, file, {
+        headers: {
+          'Content-Type': mimeType
+        } 
+      })
+      console.log(uploadResp)
     }
-    
-    await Promise.all(uploadFiles)
 
   };
 

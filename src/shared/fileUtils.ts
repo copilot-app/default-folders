@@ -56,26 +56,21 @@ export async function getFileMetadata(entry): Promise<string> {
   });
 }
 
-//export async function getFileType(file) {
-//    return await new Promise((resolve) => {
-//        let fileReader = new FileReader(); 
-//
-//        fileReader.onloadend = function (event) {
-//            if (event.target.readyState === FileReader.DONE) {
-//                const uint = new Uint8Array(event.target.result);
-//                let bytes = [];
-//
-//                uint.forEach((byte) => {
-//                    bytes.push(byte.toString(16))
-//                })
-//
-//                const hex = bytes.join('').toUpperCase();
-//                const mimeType = getMimeType(hex);
-//
-//                resolve(mimeType);
-//            }
-//        }
-//
-//        fileReader.readAsArrayBuffer(file.slice(0, 4));
-//    });
-//}
+
+export async function getFile(entry): Promise<file> {
+  return new Promise((resolve, reject) => {
+    entry.file((file) => {
+      let reader = new FileReader();
+
+      reader.onload = () => {
+        resolve(reader.result);
+      };
+
+      reader.onerror = () => {
+        reject(new Error(reader.error));
+      };
+    }, () => {
+      reject(new Error("Unable to read file"));
+    });
+  });
+}
