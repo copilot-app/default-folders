@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getSignedURL } from "@/shared/s3";
+
 import { z } from "zod";
 
 type ResponseData = Record<

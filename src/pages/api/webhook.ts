@@ -5,7 +5,7 @@ import axios from "axios";
 import * as s3 from "@/shared/s3";
 import logger from "@/shared/logger";
 
-//import { copilotApi } from "copilot-node-sdk";
+import { copilotApi } from "copilot-node-sdk";
 
 const COPILOT_API_KEY = process.env?.COPILOT_API_KEY || "";
 const COPILOT_API_VERSION = process.env?.COPILOT_API_VERSION || "v1";
@@ -46,11 +46,11 @@ export default async function handler(
   }
 
   // --------------------------------------
-  //const copilot = copilotApi({
-  //  apiKey: COPILOT_API_KEY,
-  //  token: ""
-  //})
-  //const fileChannels = copilot.listFileChannels({memberId: req.body.data.id})
+  const copilot = copilotApi({
+    apiKey: COPILOT_API_KEY,
+    token: ""
+  })
+  const fileChannels = copilot.listFileChannels({memberId: req.body.data.id})
   // --------------------------------------
 
   const memberId = req.body.data.id;

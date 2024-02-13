@@ -1,8 +1,8 @@
-import * as fileUtils from "@/shared/file-utils";
-import axios from "axios";
+import * as fileUtils from "@/shared/client/file-utils";
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
+import * as apiServices from "../shared/client/api-services";
 
 const texts = {
   drop: "Drop!",
@@ -42,7 +42,7 @@ const Component = () => {
     setDropzoneClass("dropzone");
   };
 
-  const handleDrop = (event: CustomEvent & { dataTransfer: DataTransfer }) => {
+  const handleDrop = async(event: CustomEvent & { dataTransfer: DataTransfer }) => {
     handleDefaults(event);
     setDzText(texts.drag);
     setDropzoneClass("dropzone");
@@ -63,6 +63,14 @@ const Component = () => {
           }
         }
       });
+ 
+    for (const r of resources){
+      if (r.isDirectory){
+        const entries = await fileUtils.getFileStructure(r)
+        console.log('file-structure', entries)
+      }
+    }
+
     setFiles((prev) => {
       return [...prev, ...resources];
     });
@@ -96,41 +104,27 @@ const Component = () => {
       });
     }
 
-    const res = await axios({
-      method: "POST",
-      url: `${URL}/api/signed-url`,
-      data: {
-        files: mapFilesToMime.map((entry) => ({
-          key: entry.key,
-          mime: entry.mime,
-        })),
-      },
-      headers: {
-        ContentType: "application/json",
-      },
-    });
+    console.log(mapFilesToMime);
 
-    const mapSignedUrls = res.data;
+    //const mapSignedUrls = await apiServices.getSignedUrls(mapFilesToMime)
 
-    const uploadFiles = [];
-    for (const entry of mapFilesToMime) {
-      entry.uploadConfig = mapSignedUrls[entry.key];
-      if (!entry.uploadConfig) {
-        continue;
-      }
+    //for (const entry of mapFilesToMime) {
+    //  entry.uploadConfig = mapSignedUrls[entry.key];
+    //  if (!entry.uploadConfig) {
+    //    continue;
+    //  }
 
-      const url = entry.uploadConfig.url
-      const file = await fileUtils.getFile(entry.resource)
-      const mimeType = entry.mime
- 
-      const uploadResp = await axios.put(url, file, {
-        headers: {
-          'Content-Type': mimeType
-        } 
-      })
-      console.log(uploadResp)
-    }
+    //  const url = entry.uploadConfig.url
+    //  const file = await fileUtils.getFile(entry.resource)
+    //  const mimeType = entry.mime
 
+    //  const uploadResp = await axios.put(url, file, {
+    //    headers: {
+    //      'Content-Type': mimeType
+    //    }
+    //  })
+    //  console.log(uploadResp)
+    //}
   };
 
   useEffect(() => {
