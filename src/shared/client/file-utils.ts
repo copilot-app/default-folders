@@ -1,3 +1,5 @@
+import * as nodeTypes from '../types/node'
+
 const getMime = (signature) => {
   switch (signature) {
     case "89504E47":
@@ -93,16 +95,7 @@ export function readDirectory(directory) {
   });
 }
 
-type NodeType = 'file' | 'dir'
-type Entry = FileSystemDirectoryEntry | FileSystemFileEntry
-
-type Node = {
-  type: NodeType
-  entry: FileSystemDirectoryEntry | FileSystemFileEntry,
-  children: Array<Node>
-}
-
-function createNode(t: NodeType, entry:Entry): Node{
+function createNode(t: nodeTypes.NodeType, entry: nodeTypes.Entry): nodeTypes.Node{
   return {
     children: [],
     entry: entry,
@@ -110,14 +103,14 @@ function createNode(t: NodeType, entry:Entry): Node{
   }
 }
 
-export async function getFileStructure(root: Entry){
+export async function getFileStructure(root: nodeTypes.Entry){
   if (root.isFile){
     return createNode('file', root)
   }
 
   const rootNode = createNode('dir', root)
   
-  const collectChildren = async(node: Node)=>{
+  const collectChildren = async(node: nodeTypes.Node)=>{
     if (node.entry.isFile){
         return
     }

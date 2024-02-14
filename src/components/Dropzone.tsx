@@ -2,6 +2,8 @@ import * as fileUtils from "@/shared/client/file-utils";
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
+import * as nodeTypes from "../shared/types/node";
+import Files from "./Files";
 import * as apiServices from "../shared/client/api-services";
 
 const texts = {
@@ -23,6 +25,7 @@ const Component = () => {
   const [dropzoneClass, setDropzoneClass] = useState("dropzone");
   const [dzText, setDzText] = useState(texts.drag);
   const [files, setFiles] = useState<Array<DataTransferItem>>([]);
+  const [nodes, setNodes] = useState<Array<nodeTypes.Node>>([]);
   const [feature, setFeature] = useState<Feature>(null);
 
   const handleDefaults = (event: Event) => {
@@ -42,7 +45,9 @@ const Component = () => {
     setDropzoneClass("dropzone");
   };
 
-  const handleDrop = async(event: CustomEvent & { dataTransfer: DataTransfer }) => {
+  const handleDrop = async (
+    event: CustomEvent & { dataTransfer: DataTransfer }
+  ) => {
     handleDefaults(event);
     setDzText(texts.drag);
     setDropzoneClass("dropzone");
@@ -63,22 +68,19 @@ const Component = () => {
           }
         }
       });
- 
-    for (const r of resources){
-      if (r.isDirectory){
-        const entries = await fileUtils.getFileStructure(r)
-        console.log('file-structure', entries)
-      }
-    }
 
-    setFiles((prev) => {
-      return [...prev, ...resources];
+    const n: Array<nodeTypes.Node> = [];
+    for (const r of resources) {
+      n.push(await fileUtils.getFileStructure(r));
+    }
+    setNodes((prev: Array<nodeTypes.Node>) => {
+      return [...prev, ...n];
     });
   };
 
-  const rmFile = (idx: number) => {
-    setFiles((prev) => {
-      return prev.splice(idx);
+  const removeNode = (indexToRemove: number) => {
+    setNodes((n) => {
+      return n.filter((_, index) => index !== indexToRemove);
     });
   };
 
@@ -168,24 +170,12 @@ const Component = () => {
         <span>{dzText}</span>
       </div>
       <div>
-        {files.map((f, idx) => (
-          <div key={uuid()} className="file-grid">
-            <div>{`${f?.isDirectory ? "📁 " : ""}${f?.name}`}</div>
-            <div>
-              <button
-                onClick={() => {
-                  rmFile(idx);
-                }}
-              >
-                X
-              </button>
-            </div>
-          </div>
-        ))}
+        <Files nodes={nodes} removeNode={removeNode} />
       </div>
       <button onClick={handleSubmit} className="submit-button">
         submit
       </button>
+      {nodes.map((n) => n.entry.name)}
     </Style>
   );
 };
