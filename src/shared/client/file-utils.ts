@@ -29,7 +29,7 @@ const getMime = (signature) => {
   }
 };
 
-export async function getFileMetadata(entry): Promise<string> {
+export async function getFileMimeType(entry): Promise<string> {
   return new Promise((resolve, reject) => {
     if (entry.isDirectory) {
       resolve("dir");
@@ -95,22 +95,34 @@ export function readDirectory(directory) {
   });
 }
 
-function createNode(t: nodeTypes.NodeType, entry: nodeTypes.Entry): nodeTypes.Node{
+async function createNode(t: nodeTypes.NodeType, entry: nodeTypes.Entry): Promise<nodeTypes.Node>{
+  let mime = "N/A"
+  let key = entry.fullPath
+  if (entry.isFile){
+    mime = await getFileMimeType(entry) 
+  }
+
+  if(key.startsWith("/")){
+    key = key.slice(1)
+  }
+
   return {
     children: [],
     entry: entry,
-    type: t
+    type: t,
+    mime,
+    key
   }
 }
 
-export async function getFileStructure(root: nodeTypes.Entry){
+export async function getFileStructure(root: nodeTypes.Entry): Promise<nodeTypes.Node>{
   if (root.isFile){
     return createNode('file', root)
   }
 
-  const rootNode = createNode('dir', root)
+  const rootNode = await createNode('dir', root)
   
-  const collectChildren = async(node: nodeTypes.Node)=>{
+  const collectChildren = async(node: nodeTypes.Node) =>{
     if (node.entry.isFile){
         return
     }
@@ -119,7 +131,7 @@ export async function getFileStructure(root: nodeTypes.Entry){
     if (children instanceof Array) {
       for (const child of children){
         const nt = child.isFile ? "file" : "dir"
-        const n = createNode(nt, child)
+        const n = await createNode(nt, child)
         node.children.push(n)
         await collectChildren(n) 
       }

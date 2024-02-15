@@ -1,16 +1,14 @@
 import axios from "axios";
+import * as apiTypes from '../types/api'
 
-export async function getSignedUrls(
-  input: Array<{ key: string; mime: string }>
-) {
+const URL = process?.env?.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+export async function getSignedUrls(body: apiTypes.SignedUrlRequestBody) {
   const res = await axios({
     method: "POST",
     url: `${URL}/api/signed-url`,
     data: {
-      files: input.map((entry) => ({
-        key: entry.key,
-        mime: entry.mime,
-      })),
+      files: body
     },
     headers: {
       ContentType: "application/json",
@@ -18,4 +16,13 @@ export async function getSignedUrls(
   });
 
   return res.data
+}
+
+export async function putFileSignedUrl(url: string, file: string, mime: string){
+  console.log('PUT:',url)
+  return axios.put(url, file, {
+    headers: {
+      'Content-Type': mime
+    }
+  })
 }

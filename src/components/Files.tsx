@@ -5,8 +5,6 @@ import { v4 as uuid } from "uuid";
 
 function Component(props: { nodes: Array<nodeTypes.Node>, removeNode: (idx: number)=>void }) { 
   
-  console.log(props)
-
   return (
     <Styles>
       {props.nodes.map((f, idx) => (

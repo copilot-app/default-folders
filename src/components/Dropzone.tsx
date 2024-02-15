@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 import * as nodeTypes from "../shared/types/node";
+import * as apiTypes from "../shared/types/api";
 import Files from "./Files";
 import * as apiServices from "../shared/client/api-services";
+import { BarLoader } from "react-spinners";
 
 const texts = {
   drop: "Drop!",
@@ -18,10 +20,9 @@ type DataTransferItem = {
   isFile: boolean;
 };
 
-const URL = process?.env?.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
 const Component = () => {
   const inputRef = useRef(null);
+  const [loading, setLoading] = useState(false);
   const [dropzoneClass, setDropzoneClass] = useState("dropzone");
   const [dzText, setDzText] = useState(texts.drag);
   const [files, setFiles] = useState<Array<DataTransferItem>>([]);
@@ -64,6 +65,7 @@ const Component = () => {
           if (feature === "webkit") {
             return item.webkitGetAsEntry();
           } else {
+            // @ts-ignore
             return item.getAsFileSystemHandle();
           }
         }
@@ -85,48 +87,45 @@ const Component = () => {
   };
 
   const handleSubmit = async () => {
-    const mapFilesToMime: Array<{
-      mime: string;
-      key: string;
-      resource: object;
-      uploadConfig?: {
-        key: string;
-        url: string;
+    try {
+      const fileNodes: Array<nodeTypes.Node & { signedUrl?: string }> = [];
+      const collectFiles = (node: nodeTypes.Node) => {
+        if (node.entry.isFile) {
+          fileNodes.push(node);
+        } else {
+          for (const child of node.children) {
+            collectFiles(child);
+          }
+        }
       };
-    }> = [];
+      for (const n of nodes) {
+        collectFiles(n);
+      }
 
-    for (let i = 0; i < files.length; i++) {
-      const mime: string = await fileUtils.getFileMetadata(files[i]);
-      const key: string = files[i].name;
+      const signedUrlsReqBody = fileNodes.map((n) => ({
+        key: n.key,
+        mime: n.mime,
+      }));
 
-      mapFilesToMime.push({
-        resource: files[i],
-        mime,
-        key,
-      });
+      const signedUrls = await apiServices.getSignedUrls(
+        apiTypes.SignedUrlRequestBodySchema.parse(signedUrlsReqBody)
+      );
+
+      for (const fn of fileNodes) {
+        fn.signedUrl = signedUrls[fn.key].url;
+      }
+
+      for (const fn of fileNodes){
+        const file = await fileUtils.getFile(fn.entry)
+        if (fn.signedUrl){
+          await apiServices.putFileSignedUrl(fn.signedUrl, file, fn.mime)
+        }
+      }
+    } catch (err) {
+      throw err;
+    } finally {
+      setLoading(false);
     }
-
-    console.log(mapFilesToMime);
-
-    //const mapSignedUrls = await apiServices.getSignedUrls(mapFilesToMime)
-
-    //for (const entry of mapFilesToMime) {
-    //  entry.uploadConfig = mapSignedUrls[entry.key];
-    //  if (!entry.uploadConfig) {
-    //    continue;
-    //  }
-
-    //  const url = entry.uploadConfig.url
-    //  const file = await fileUtils.getFile(entry.resource)
-    //  const mimeType = entry.mime
-
-    //  const uploadResp = await axios.put(url, file, {
-    //    headers: {
-    //      'Content-Type': mimeType
-    //    }
-    //  })
-    //  console.log(uploadResp)
-    //}
   };
 
   useEffect(() => {
@@ -139,6 +138,17 @@ const Component = () => {
       }
     }
   }, []);
+
+  if (loading) {
+    return (
+      <Style>
+        <div className="loading-container">
+          <div>Loading...</div>
+          <BarLoader width={140} height={8} />
+        </div>
+      </Style>
+    );
+  }
 
   return (
     <Style>
@@ -175,12 +185,22 @@ const Component = () => {
       <button onClick={handleSubmit} className="submit-button">
         submit
       </button>
-      {nodes.map((n) => n.entry.name)}
     </Style>
   );
 };
 
 const Style = styled.div`
+  min-height: 100vh;
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 300px;
+    flex-direction: column;
+    gap: 1rem;
+    font-size: 1.4rem;
+  }
   .dropzone {
     color: #444;
     border: 0.2rem dashed #ddd;
