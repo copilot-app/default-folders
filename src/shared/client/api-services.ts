@@ -19,10 +19,13 @@ export async function getSignedUrls(body: apiTypes.SignedUrlRequestBody) {
 }
 
 export async function putFileSignedUrl(url: string, file: string, mime: string){
-  console.log('PUT:',url)
   return axios.put(url, file, {
     headers: {
       'Content-Type': mime
     }
   })
+}
+
+export async function getFiles(){
+  return axios.get(`${URL}/api/get-files`)
 }

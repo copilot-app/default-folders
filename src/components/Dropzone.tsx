@@ -7,6 +7,8 @@ import * as apiTypes from "../shared/types/api";
 import Files from "./Files";
 import * as apiServices from "../shared/client/api-services";
 import { BarLoader } from "react-spinners";
+import { createPortal } from "react-dom";
+import ModalContent from "../components/Modal";
 
 const texts = {
   drop: "Drop!",
@@ -20,14 +22,26 @@ type DataTransferItem = {
   isFile: boolean;
 };
 
-const Component = () => {
+const convertItem = (feature: Feature, item: globalThis.DataTransferItem) => {
+  if (feature === "webkit") {
+    // @ts-ignore
+    return item.webkitGetAsEntry();
+  } else {
+    // @ts-ignore
+    return item.getAsFileSystemHandle();
+  }
+};
+
+const Component = (props: { existingFiles: Array<string> }) => {
   const inputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [dropzoneClass, setDropzoneClass] = useState("dropzone");
   const [dzText, setDzText] = useState(texts.drag);
-  const [files, setFiles] = useState<Array<DataTransferItem>>([]);
   const [nodes, setNodes] = useState<Array<nodeTypes.Node>>([]);
   const [feature, setFeature] = useState<Feature>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [matchingFiles, setMatchingFiles] = useState<Array<string>>([]);
 
   const handleDefaults = (event: Event) => {
     event.preventDefault();
@@ -52,8 +66,32 @@ const Component = () => {
     handleDefaults(event);
     setDzText(texts.drag);
     setDropzoneClass("dropzone");
-    // @ts-ignore
-    const resources = [...event?.dataTransfer?.items]
+
+    const items = [...event.dataTransfer.items].map(
+      (itm: globalThis.DataTransferItem) => convertItem(feature, itm)
+    );
+
+    const droppedFilePaths: Array<string> = [];
+    for (const item of items) {
+      let path = item.fullPath;
+      if (path.startsWith("/")) {
+        path = path.slice(1);
+      }
+      droppedFilePaths.push(path);
+    }
+
+    const matchingFiles = props.existingFiles.filter((file) =>
+      droppedFilePaths.includes(file)
+    );
+
+    if (matchingFiles) {
+      setErrorMessage(`Error, you are trying to add duplicated files:`);
+      setMatchingFiles(matchingFiles);
+      setShowModal(true);
+      return;
+    }
+
+    items
       .filter((item) => {
         return item.kind === "file";
       })
@@ -62,17 +100,12 @@ const Component = () => {
           // No directory support detected
           return;
         } else {
-          if (feature === "webkit") {
-            return item.webkitGetAsEntry();
-          } else {
-            // @ts-ignore
-            return item.getAsFileSystemHandle();
-          }
+          return convertItem(feature, item);
         }
       });
 
     const n: Array<nodeTypes.Node> = [];
-    for (const r of resources) {
+    for (const r of items) {
       n.push(await fileUtils.getFileStructure(r));
     }
     setNodes((prev: Array<nodeTypes.Node>) => {
@@ -115,10 +148,10 @@ const Component = () => {
         fn.signedUrl = signedUrls[fn.key].url;
       }
 
-      for (const fn of fileNodes){
-        const file = await fileUtils.getFile(fn.entry)
-        if (fn.signedUrl){
-          await apiServices.putFileSignedUrl(fn.signedUrl, file, fn.mime)
+      for (const fn of fileNodes) {
+        const file = await fileUtils.getFile(fn.entry);
+        if (fn.signedUrl) {
+          await apiServices.putFileSignedUrl(fn.signedUrl, file, fn.mime);
         }
       }
     } catch (err) {
@@ -185,12 +218,24 @@ const Component = () => {
       <button onClick={handleSubmit} className="submit-button">
         submit
       </button>
+      {showModal &&
+        createPortal(
+          <ModalContent onClose={() => setShowModal(false)}>
+            {errorMessage}
+            <ul>
+              {matchingFiles.map((f) => (
+                <li key={uuid()}>{f}</li>
+              ))}
+            </ul>
+          </ModalContent>,
+          document.body
+        )}
     </Style>
   );
 };
 
 const Style = styled.div`
-  min-height: 100vh;
+  min-height: 200px;
   .loading-container {
     display: flex;
     justify-content: center;
