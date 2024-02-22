@@ -17,7 +17,10 @@ const texts = {
   drag: "Drag your files here...",
 };
 
-const Component = (props: { existingFiles: Array<string>, fetchFiles: ()=>void }) => {
+const Component = (props: {
+  existingFiles: Array<string>;
+  fetchFiles: () => void;
+}) => {
   const inputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [dropzoneClass, setDropzoneClass] = useState("dropzone");
@@ -62,16 +65,31 @@ const Component = (props: { existingFiles: Array<string>, fetchFiles: ()=>void }
       if (path.startsWith("/")) {
         path = path.slice(1);
       }
-      if(item.isDirectory && !path.endsWith("/")){
-        path = `${path}/`
+      if (item.isDirectory && !path.endsWith("/")) {
+        path = `${path}/`;
       }
       droppedFilePaths.push(path);
     }
 
-    const matchingFiles = props.existingFiles.filter((file) =>
-      droppedFilePaths.includes(file)
-    );
+    const existingRoot = props.existingFiles.map((f: string) => {
+      return f.split("/")[0];
+    });
 
+    const droppedFilePathRoot = droppedFilePaths.map((f) => {
+      let r = f;
+      if (r.endsWith("/")) {
+        r = r.replace("/", "");
+      }
+      return r;
+    });
+
+    const matchingFiles = existingRoot.filter((f: string) => {
+      let r = f;
+      if (r.endsWith("/")) {
+        r = r.replace("/", "");
+      }
+      return droppedFilePathRoot.includes(r);
+    });
 
     if (matchingFiles.length > 0) {
       setErrorMessage(`Error, you are trying to add duplicated files:`);
@@ -98,7 +116,6 @@ const Component = (props: { existingFiles: Array<string>, fetchFiles: ()=>void }
       const fileNodes: Array<nodeTypes.SignedNode> =
         fileUtils.collectFilesFromNodeHierarchy(nodes);
 
-
       // Only get signed URLs for files:
       let signedUrlsReqBody = fileNodes
         .filter((n) => n.type === "file")
@@ -112,16 +129,15 @@ const Component = (props: { existingFiles: Array<string>, fetchFiles: ()=>void }
       );
 
       for (const fn of fileNodes) {
-        if (fn.type === 'file'){
+        if (fn.type === "file") {
           fn.signedUrl = signedUrls[fn.key].url;
-        }else{
-          fn.signedUrl = "N/A"
+        } else {
+          fn.signedUrl = "N/A";
         }
       }
 
       await api.uploadFilesystemEntries(fileNodes);
-      props.fetchFiles()
-
+      props.fetchFiles();
     } catch (err) {
       throw err;
     } finally {
@@ -170,7 +186,9 @@ const Component = (props: { existingFiles: Array<string>, fetchFiles: ()=>void }
         onDragLeave={handleDragleave}
       >
         {/* @ts-expect-error */}
-        <input ref={inputRef} webkitdirectory=""
+        <input
+          ref={inputRef}
+          webkitdirectory=""
           className="dropzone-input"
           type="file"
           multiple

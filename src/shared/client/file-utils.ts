@@ -150,7 +150,6 @@ async function getFileStructure(
     if (children instanceof Array) {
       for (const child of children) {
         const nt = child.isFile ? "file" : "dir";
-        console.log("before create node:", nt);
         const n = await createNode(nt, child);
         node.children.push(n);
         await collectChildren(n);

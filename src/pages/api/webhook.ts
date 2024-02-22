@@ -80,8 +80,7 @@ export default async function handler(
 
       const uploadUrl = uploadLinkResp.data.uploadUrl;
       logger.info(`${reqId}: uploading file`);
-      const uploadResp = await axios.put(uploadUrl, p);
-      console.log(uploadResp);
+      await axios.put(uploadUrl, p);
     }
   }
 

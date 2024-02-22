@@ -8,7 +8,7 @@ function Component(props: { nodes: Array<nodeTypes.Node>, removeNode: (idx: numb
   return (
     <Styles>
       {props.nodes.map((f, idx) => (
-        <div key={idx} className="file-grid">
+        <div key={uuid()} className="file-grid">
           <div>{`${f.entry?.isDirectory ? "📁 " : ""}${f?.entry.name}`}</div>
           <div>
             <button
