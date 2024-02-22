@@ -5,40 +5,25 @@ import { v4 as uuid } from "uuid";
 import * as nodeTypes from "../shared/types/node";
 import * as apiTypes from "../shared/types/api";
 import Files from "./Files";
-import * as apiServices from "../shared/client/api-services";
+import * as api from "../shared/client/api";
 import { BarLoader } from "react-spinners";
 import { createPortal } from "react-dom";
 import ModalContent from "../components/Modal";
+import * as domTypes from "../shared/client/types/dom";
+import * as domUtils from "../shared/client/dom-utils";
 
 const texts = {
   drop: "Drop!",
   drag: "Drag your files here...",
 };
 
-type Feature = null | "file-system" | "webkit";
-type DataTransferItem = {
-  name: string;
-  isDirectory: boolean;
-  isFile: boolean;
-};
-
-const convertItem = (feature: Feature, item: globalThis.DataTransferItem) => {
-  if (feature === "webkit") {
-    // @ts-ignore
-    return item.webkitGetAsEntry();
-  } else {
-    // @ts-ignore
-    return item.getAsFileSystemHandle();
-  }
-};
-
-const Component = (props: { existingFiles: Array<string> }) => {
+const Component = (props: { existingFiles: Array<string>, fetchFiles: ()=>void }) => {
   const inputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [dropzoneClass, setDropzoneClass] = useState("dropzone");
   const [dzText, setDzText] = useState(texts.drag);
   const [nodes, setNodes] = useState<Array<nodeTypes.Node>>([]);
-  const [feature, setFeature] = useState<Feature>(null);
+  const [feature, setFeature] = useState<domTypes.Feature>(null);
   const [showModal, setShowModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [matchingFiles, setMatchingFiles] = useState<Array<string>>([]);
@@ -68,7 +53,7 @@ const Component = (props: { existingFiles: Array<string> }) => {
     setDropzoneClass("dropzone");
 
     const items = [...event.dataTransfer.items].map(
-      (itm: globalThis.DataTransferItem) => convertItem(feature, itm)
+      (itm: globalThis.DataTransferItem) => domUtils.convertItem(feature, itm)
     );
 
     const droppedFilePaths: Array<string> = [];
@@ -80,36 +65,24 @@ const Component = (props: { existingFiles: Array<string> }) => {
       droppedFilePaths.push(path);
     }
 
+    console.log(props.existingFiles)
+    console.log(droppedFilePaths)
+
     const matchingFiles = props.existingFiles.filter((file) =>
       droppedFilePaths.includes(file)
     );
 
-    if (matchingFiles) {
+    if (matchingFiles.length > 0) {
       setErrorMessage(`Error, you are trying to add duplicated files:`);
       setMatchingFiles(matchingFiles);
       setShowModal(true);
       return;
     }
 
-    items
-      .filter((item) => {
-        return item.kind === "file";
-      })
-      .map((item) => {
-        if (!feature) {
-          // No directory support detected
-          return;
-        } else {
-          return convertItem(feature, item);
-        }
-      });
+    const hi = await fileUtils.convertToHierarchyNodes(items);
 
-    const n: Array<nodeTypes.Node> = [];
-    for (const r of items) {
-      n.push(await fileUtils.getFileStructure(r));
-    }
     setNodes((prev: Array<nodeTypes.Node>) => {
-      return [...prev, ...n];
+      return [...prev, ...hi];
     });
   };
 
@@ -121,42 +94,37 @@ const Component = (props: { existingFiles: Array<string> }) => {
 
   const handleSubmit = async () => {
     try {
-      const fileNodes: Array<nodeTypes.Node & { signedUrl?: string }> = [];
-      const collectFiles = (node: nodeTypes.Node) => {
-        if (node.entry.isFile) {
-          fileNodes.push(node);
-        } else {
-          for (const child of node.children) {
-            collectFiles(child);
-          }
-        }
-      };
-      for (const n of nodes) {
-        collectFiles(n);
-      }
+      const fileNodes: Array<nodeTypes.SignedNode> =
+        fileUtils.collectFilesFromNodeHierarchy(nodes);
 
-      const signedUrlsReqBody = fileNodes.map((n) => ({
-        key: n.key,
-        mime: n.mime,
-      }));
 
-      const signedUrls = await apiServices.getSignedUrls(
+      // Only get signed URLs for files:
+      let signedUrlsReqBody = fileNodes
+        .filter((n) => n.type === "file")
+        .map((n) => ({
+          key: n.key,
+          mime: n.mime,
+        }));
+
+      const signedUrls = await api.getSignedUrls(
         apiTypes.SignedUrlRequestBodySchema.parse(signedUrlsReqBody)
       );
 
       for (const fn of fileNodes) {
-        fn.signedUrl = signedUrls[fn.key].url;
-      }
-
-      for (const fn of fileNodes) {
-        const file = await fileUtils.getFile(fn.entry);
-        if (fn.signedUrl) {
-          await apiServices.putFileSignedUrl(fn.signedUrl, file, fn.mime);
+        if (fn.type === 'file'){
+          fn.signedUrl = signedUrls[fn.key].url;
+        }else{
+          fn.signedUrl = "N/A"
         }
       }
+
+      await api.uploadFilesystemEntries(fileNodes);
+      props.fetchFiles()
+
     } catch (err) {
       throw err;
     } finally {
+      setNodes([]);
       setLoading(false);
     }
   };
@@ -258,8 +226,10 @@ const Style = styled.div`
     text-align: center;
     transition: 0.25s background-color ease-in-out;
     cursor: pointer;
+    min-width: 300px;
     &-dragging,
     &:hover {
+      min-width: 300px;
       background-color: #effeef;
     }
     &-icon {

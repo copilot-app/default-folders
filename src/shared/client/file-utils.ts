@@ -1,7 +1,9 @@
-import * as nodeTypes from '../types/node'
+import * as nodeTypes from "../types/node";
 
-const getMime = (signature) => {
+const getMime = (signature: string) => {
   switch (signature) {
+    case "4D7922054":
+      return "text/plain";
     case "89504E47":
       return "image/png";
     case "47494638":
@@ -29,7 +31,9 @@ const getMime = (signature) => {
   }
 };
 
-export async function getFileMimeType(entry): Promise<string> {
+export async function getFileMimeType(
+  entry: FileSystemFileEntry
+): Promise<string> {
   return new Promise((resolve, reject) => {
     if (entry.isDirectory) {
       resolve("dir");
@@ -39,18 +43,22 @@ export async function getFileMimeType(entry): Promise<string> {
         let reader = new FileReader();
 
         reader.onload = () => {
-          const uint = new Uint8Array(reader.result);
-          let bytes = [];
-          uint.forEach((byte) => {
-            bytes.push(byte.toString(16));
-          });
-          const hex = bytes.join("").toUpperCase();
-          const mimeType = getMime(hex);
-          resolve(mimeType); // Resolve with the MIME type
+          if (reader.result instanceof ArrayBuffer) {
+            const uint = new Uint8Array(reader.result);
+            let bytes: Array<string> = [];
+            uint.forEach((byte) => {
+              bytes.push(byte.toString(16));
+            });
+            const hex = bytes.join("").toUpperCase();
+            const mimeType = getMime(hex);
+            resolve(mimeType); // Resolve with the MIME type
+          }
         };
 
         reader.onerror = () => {
-          reject(new Error(reader.error)); // Reject with an error
+          if (reader?.error instanceof DOMException) {
+            reject(reader.error); // Reject with an error
+          }
         };
 
         reader.readAsArrayBuffer(file.slice(0, 4));
@@ -62,11 +70,13 @@ export async function getFileMimeType(entry): Promise<string> {
   });
 }
 
-export async function getFile(entry): Promise<string> {
+export async function getFile(entry: FileSystemFileEntry): Promise<File> {
   return new Promise((resolve, reject) => {
     entry.file(
       (file) => {
-        resolve(file);
+        if (file instanceof File) {
+          resolve(file);
+        }
       },
       () => {
         reject(new Error("Unable to read file"));
@@ -75,10 +85,9 @@ export async function getFile(entry): Promise<string> {
   });
 }
 
-export function readDirectory(directory) {
+export function readDirectory(directory: FileSystemDirectoryEntry) {
   return new Promise((resolve, reject) => {
     let dirReader = directory.createReader();
-    let entries = [];
 
     let getEntries = () => {
       dirReader.readEntries(
@@ -95,15 +104,23 @@ export function readDirectory(directory) {
   });
 }
 
-async function createNode(t: nodeTypes.NodeType, entry: nodeTypes.Entry): Promise<nodeTypes.Node>{
-  let mime = "N/A"
-  let key = entry.fullPath
-  if (entry.isFile){
-    mime = await getFileMimeType(entry) 
+async function createNode(
+  t: nodeTypes.NodeType,
+  entry: nodeTypes.Entry
+): Promise<nodeTypes.Node> {
+  let mime = "N/A";
+  let key = entry.fullPath;
+
+  if (entry?.isFile && entry instanceof FileSystemFileEntry) {
+    mime = await getFileMimeType(entry);
   }
 
-  if(key.startsWith("/")){
-    key = key.slice(1)
+  if (entry.isDirectory) {
+    mime = "folder";
+  }
+
+  if (key.startsWith("/")) {
+    key = key.slice(1);
   }
 
   return {
@@ -111,35 +128,71 @@ async function createNode(t: nodeTypes.NodeType, entry: nodeTypes.Entry): Promis
     entry: entry,
     type: t,
     mime,
-    key
-  }
+    key,
+  };
 }
 
-export async function getFileStructure(root: nodeTypes.Entry): Promise<nodeTypes.Node>{
-  if (root.isFile){
-    return createNode('file', root)
+async function getFileStructure(
+  root: nodeTypes.Entry
+): Promise<nodeTypes.Node> {
+  if (root.isFile) {
+    return createNode("file", root);
   }
 
-  const rootNode = await createNode('dir', root)
-  
-  const collectChildren = async(node: nodeTypes.Node) =>{
-    if (node.entry.isFile){
-        return
+  const rootNode = await createNode("dir", root);
+
+  const collectChildren = async (node: nodeTypes.Node) => {
+    if (node.entry.isFile) {
+      return;
     }
-    const children = await readDirectory(node.entry)
+    const children = await readDirectory(node.entry);
 
     if (children instanceof Array) {
-      for (const child of children){
-        const nt = child.isFile ? "file" : "dir"
-        const n = await createNode(nt, child)
-        node.children.push(n)
-        await collectChildren(n) 
+      for (const child of children) {
+        const nt = child.isFile ? "file" : "dir";
+        console.log("before create node:", nt);
+        const n = await createNode(nt, child);
+        node.children.push(n);
+        await collectChildren(n);
       }
     }
-  } 
+  };
 
-  await collectChildren(rootNode)
+  await collectChildren(rootNode);
 
-  return rootNode
+  return rootNode;
 }
 
+export const convertToHierarchyNodes = async (
+  entries: Array<nodeTypes.Entry>
+) => {
+  const result: Array<nodeTypes.Node> = [];
+  for (const x of entries) {
+    result.push(await getFileStructure(x));
+  }
+  return result;
+};
+
+export const collectFilesFromNodeHierarchy = (nodes: Array<nodeTypes.Node>) => {
+  const result: Array<nodeTypes.Node> = [];
+
+  const recurse = (node: nodeTypes.Node) => {
+    if (node.entry.isFile) {
+      result.push(node);
+    } else {
+      if (node.children.length === 0) {
+        result.push(node);
+      } else {
+        for (const child of node.children) {
+          recurse(child);
+        }
+      }
+    }
+  };
+  
+  for (const n of nodes){
+    recurse(n)
+  }
+
+  return result
+};

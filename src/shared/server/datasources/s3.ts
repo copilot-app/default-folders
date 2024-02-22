@@ -3,13 +3,14 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "stream";
 import path from "path";
 import fs from "fs";
-import logger from "./logger";
+import logger from "../logger";
 import {
   S3Client,
   PutObjectCommand,
   ListObjectsV2Command,
   GetObjectCommand,
 } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 
 const BUCKET = process?.env?.BUCKET || "";
 
@@ -107,4 +108,25 @@ function createHierarchy(reqId: string, filepath: string) {
       );
     }
   });
+}
+
+export async function createFolders(folders: Array<string>) {
+  const client = new S3Client();
+
+  for (const f of folders) {
+    let key = f
+    if (!key.endsWith("/")){
+      key = `${key}/`
+    }
+
+    const upload = new Upload({
+      client,
+      params: {
+        Bucket: BUCKET,
+        Key: key,
+        Body: "",
+      },
+    });
+    await upload.done()
+  }
 }

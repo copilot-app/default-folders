@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import * as s3 from "@/shared/server/s3";
+import * as s3 from "@/shared/server/datasources/s3";
+import {v4 as uuid} from 'uuid'
 
 import { z } from "zod";
 
@@ -21,12 +22,13 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ResponseData | { message: string }>
 ) {
+  const reqId = uuid()
   if (req.method === "POST") {
     res.status(405).json({ message: "POST Not Allowed" });
   }
 
-  const allFiles = await s3.listFiles();
-  console.log(allFiles);
+  const allFiles = await s3.listFiles(reqId);
+
   let files: Array<string> = []
   if (allFiles instanceof Array){
     files = allFiles.map((f) => f.Key);

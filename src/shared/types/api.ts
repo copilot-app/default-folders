@@ -5,5 +5,6 @@ export const SignedUrlRequestEntrySchema = z.object({
   mime: z.string(),
 });
 export type SignedUrlRequestEntry = z.infer<typeof SignedUrlRequestEntrySchema>;
+
 export const SignedUrlRequestBodySchema = z.array(SignedUrlRequestEntrySchema);
 export type SignedUrlRequestBody = z.infer<typeof SignedUrlRequestBodySchema>;
