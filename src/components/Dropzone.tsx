@@ -62,15 +62,16 @@ const Component = (props: { existingFiles: Array<string>, fetchFiles: ()=>void }
       if (path.startsWith("/")) {
         path = path.slice(1);
       }
+      if(item.isDirectory && !path.endsWith("/")){
+        path = `${path}/`
+      }
       droppedFilePaths.push(path);
     }
-
-    console.log(props.existingFiles)
-    console.log(droppedFilePaths)
 
     const matchingFiles = props.existingFiles.filter((file) =>
       droppedFilePaths.includes(file)
     );
+
 
     if (matchingFiles.length > 0) {
       setErrorMessage(`Error, you are trying to add duplicated files:`);
