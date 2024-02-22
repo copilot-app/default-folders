@@ -2,9 +2,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { v4 as uuid } from "uuid";
 import axios from "axios";
-import logger from "@/shared/logger";
-import * as api from '@/shared/server/api'
-import * as s3 from "@/shared/datasources/s3";
+import logger from "../../shared/server/logger";
+import * as api from "../../shared/server/api/repo";
+import * as s3 from "../../shared/server/datasources/s3";
 
 import { copilotApi } from "copilot-node-sdk";
 
@@ -33,7 +33,6 @@ export default async function handler(
   const reqId = uuid();
   logger.info(`${reqId}: webhook triggered`);
 
-
   const memberId = req.body.data.id;
 
   if (!memberId) {
@@ -43,9 +42,9 @@ export default async function handler(
 
   logger.info(`${reqId}: using member id: ${memberId}`);
 
-  const channelId = await api.getFileChannelId(memberId)
+  const channelId = await api.getFileChannelId(memberId);
   logger.info(`${reqId}: using channel id: ${channelId}`);
-  
+
   const objs = await s3.listFiles(reqId);
 
   let paths = null;
@@ -57,34 +56,33 @@ export default async function handler(
   if (!(paths instanceof Array)) {
     logger.info(`${reqId}: no files to upload`);
     res.status(200).json({ name: "No files found for user" });
-  }
+  } else {
+    for (const p of paths) {
+      logger.info(`${reqId}: request link for local file at: ${p}`);
+      const pathTokens = p.split("/"); // Output: ["", "tmp", "some uuid", "start of path", "...."]
+      const localFileTokens = pathTokens.slice(3);
+      const remotePath = localFileTokens.join("/");
+      logger.info(`${reqId}: upload file to: ${remotePath}`);
 
-  for (const p of paths) {
-    logger.info(`${reqId}: request link for local file at: ${p}`)
-    const pathTokens = p.split("/") // Output: ["", "tmp", "some uuid", "start of path", "...."]
-    const localFileTokens = pathTokens.slice(3)
-    const remotePath = localFileTokens.join("/")
-    logger.info(`${reqId}: upload file to: ${remotePath}`)
+      const uploadLinkResp = await axios({
+        method: "POST",
+        url: `${COPILOT_API_URL}/${COPILOT_API_VERSION}/files/file`,
+        headers: {
+          accept: "application/json",
+          "Content-Type": "application/json",
+          "X-API-KEY": COPILOT_API_KEY,
+        },
+        data: {
+          path: remotePath,
+          channelId: channelId,
+        },
+      });
 
-    const uploadLinkResp = await axios({
-      method: "POST",
-      url: `${COPILOT_API_URL}/${COPILOT_API_VERSION}/files/file`,
-      headers: {
-        "accept": "application/json",
-        "Content-Type": "application/json",
-        "X-API-KEY": COPILOT_API_KEY,
-      },
-      data: {
-        path: remotePath,
-        channelId: channelId,
-      },
-    });
-    
-    const uploadUrl = uploadLinkResp.data.uploadUrl
-    logger.info(`${reqId}: uploading file`)
-    const uploadResp = await axios.put(uploadUrl, p)
-    console.log(uploadResp)
-  
+      const uploadUrl = uploadLinkResp.data.uploadUrl;
+      logger.info(`${reqId}: uploading file`);
+      const uploadResp = await axios.put(uploadUrl, p);
+      console.log(uploadResp);
+    }
   }
 
   res.status(200).json({ name: "Client file assets populated" });

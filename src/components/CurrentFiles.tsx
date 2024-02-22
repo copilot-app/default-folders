@@ -8,7 +8,7 @@ const Component = (props: { files: string[] }) => {
     for (const filepath of props.files) {
       const tokens = filepath.split("/")
       const name = tokens[0];
-      if (used[name]) {
+      if (used.hasOwnProperty(name)) {
         continue;
       }
       if (tokens.length > 1){

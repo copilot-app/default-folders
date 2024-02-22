@@ -170,12 +170,10 @@ const Component = (props: { existingFiles: Array<string>, fetchFiles: ()=>void }
         onDragLeave={handleDragleave}
       >
         {/* @ts-expect-error */}
-        <input
-          ref={inputRef}
+        <input ref={inputRef} webkitdirectory=""
           className="dropzone-input"
           type="file"
           multiple
-          webkitdirectory=""
           mozdirectory=""
           directory=""
         />
