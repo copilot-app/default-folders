@@ -185,9 +185,9 @@ const Component = (props: {
         // @ts-ignore
         onDragLeave={handleDragleave}
       >
-        {/* @ts-expect-error */}
         <input
           ref={inputRef}
+          // @ts-expect-error
           webkitdirectory=""
           className="dropzone-input"
           type="file"
