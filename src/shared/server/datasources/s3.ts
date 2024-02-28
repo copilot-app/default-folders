@@ -11,6 +11,8 @@ import {
   GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
+import * as s3Types from './s3-types'
+
 
 const BUCKET = process?.env?.BUCKET || "";
 
@@ -30,15 +32,7 @@ export async function getSignedURL(key: string, mime: string) {
   };
 }
 
-type Objects = Array<{
-  Key: string;
-  LastModified: Date;
-  ETag: string;
-  Size: number;
-  StorageClass: string;
-}>;
-
-export async function listFiles(reqId = "N/A"): Promise<Objects | null> {
+export async function listFiles(reqId = "N/A"): Promise<Array<s3Types.S3Object> | null> {
   logger.info(`${reqId}: Listing S3 files`);
   const client = new S3Client();
 
@@ -48,7 +42,7 @@ export async function listFiles(reqId = "N/A"): Promise<Objects | null> {
 
   if (response?.Contents instanceof Array && response?.Contents?.length > 0) {
     logger.info(`${reqId}: Files Found: ${response.Contents.length}`);
-    return response.Contents as Objects;
+    return response.Contents as unknown as s3Types.S3Object;
   }
 
   logger.info(`${reqId}: files found: 0`);
