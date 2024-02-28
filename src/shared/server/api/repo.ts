@@ -32,10 +32,7 @@ export const getFileChannelId = async (memberId: string): Promise<string> => {
   //return copilot.listFileChannels({memberId})
 };
 
-export const getUploadUrl = async (
-  filepath: string,
-  channelId: string
-) => {
+export const getUploadUrl = async (filepath: string, channelId: string) => {
   const res = await axios({
     method: "POST",
     url: `${COPILOT_ENDPOINT}/files/file`,
@@ -48,6 +45,21 @@ export const getUploadUrl = async (
       "Content-Type": "application/json",
     },
   });
-  
-  return res.data.uploadUrl
+
+  return res.data.uploadUrl;
+};
+
+export const createFolder = async (filepath: string, channelId: string) => {
+  return axios({
+    method: "POST",
+    url: `${COPILOT_ENDPOINT}/files/folder`,
+    data: {
+      path: filepath,
+      channelId: channelId,
+    },
+    headers: {
+      ...basicHeaders,
+      "Content-Type": "application/json",
+    },
+  });
 };

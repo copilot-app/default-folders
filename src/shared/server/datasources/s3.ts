@@ -11,8 +11,7 @@ import {
   GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
-import * as s3Types from './s3-types'
-
+import * as s3Types from "./s3-types";
 
 const BUCKET = process?.env?.BUCKET || "";
 
@@ -32,7 +31,9 @@ export async function getSignedURL(key: string, mime: string) {
   };
 }
 
-export async function listFiles(reqId = "N/A"): Promise<Array<s3Types.S3Object> | null> {
+export async function listFiles(
+  reqId = "N/A"
+): Promise<Array<s3Types.S3Object> | null> {
   logger.info(`${reqId}: Listing S3 files`);
   const client = new S3Client();
 
@@ -42,7 +43,7 @@ export async function listFiles(reqId = "N/A"): Promise<Array<s3Types.S3Object> 
 
   if (response?.Contents instanceof Array && response?.Contents?.length > 0) {
     logger.info(`${reqId}: Files Found: ${response.Contents.length}`);
-    return response.Contents as unknown as s3Types.S3Object;
+    return response.Contents as unknown as Array<s3Types.S3Object>;
   }
 
   logger.info(`${reqId}: files found: 0`);
@@ -51,7 +52,7 @@ export async function listFiles(reqId = "N/A"): Promise<Array<s3Types.S3Object> 
 
 type Path = string;
 
-export async function getFiles(
+export async function downloadFiles(
   reqId: string,
   files: Array<string>
 ): Promise<Array<Path>> {
@@ -61,6 +62,7 @@ export async function getFiles(
   const dir = `/tmp/${uuid()}`;
   const result = [];
   for (const f of files) {
+    logger.info(`${reqId}: downloading: ${f}`);
     const cmd = new GetObjectCommand({ Bucket: BUCKET, Key: f });
     const resp = await client.send(cmd);
     const filepath = `${dir}/${f}`;
@@ -84,7 +86,7 @@ export async function saveFile(reqId: string, file: unknown, filepath: string) {
   });
 }
 
-function createHierarchy(reqId: string, filepath: string) {
+async function createHierarchy(reqId: string, filepath: string) {
   const directoryPath = path.dirname(filepath);
 
   if (fs.existsSync(directoryPath)) {
@@ -92,25 +94,16 @@ function createHierarchy(reqId: string, filepath: string) {
   }
 
   logger.info(`${reqId}: creating file hierarchy: ${directoryPath}`);
-
-  fs.mkdir(directoryPath, { recursive: true }, (err) => {
-    if (err) {
-      logger.error(`error creating directory: ${err}`);
-    } else {
-      logger.info(
-        `${reqId}: directory '${directoryPath}' and its parents created successfully.`
-      );
-    }
-  });
+  fs.mkdirSync(directoryPath, { recursive: true });
 }
 
 export async function createFolders(folders: Array<string>) {
   const client = new S3Client();
 
   for (const f of folders) {
-    let key = f
-    if (!key.endsWith("/")){
-      key = `${key}/`
+    let key = f;
+    if (!key.endsWith("/")) {
+      key = `${key}/`;
     }
 
     const upload = new Upload({
@@ -121,6 +114,6 @@ export async function createFolders(folders: Array<string>) {
         Body: "",
       },
     });
-    await upload.done()
+    await upload.done();
   }
 }

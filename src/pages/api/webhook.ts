@@ -34,7 +34,7 @@ export default async function handler(
   const reqId = uuid();
   logger.info(`${reqId}: webhook triggered`);
 
-  /*
+  logger.debug(`${reqId}: body: ${JSON.stringify(req.body)}`)
   const memberId = req.body.data.id;
 
   if (!memberId) {
@@ -46,27 +46,30 @@ export default async function handler(
 
   const channelId = await api.getFileChannelId(memberId);
   logger.info(`${reqId}: using channel id: ${channelId}`);
-  */
 
   const objs = await s3.listFiles(reqId);
 
+  logger.info(`${reqId}: uploading files`)
+
   if (objs){
-    const dirNodes = fileUtils.buildHierarchy(objs)   
-    console.log(JSON.stringify(dirNodes, null, 4))
+    const dirs = fileUtils.getFilesCreationOrder(objs)
+    for (const d of dirs){
+      await api.createFolder(d, channelId)
+    }
   }
 
-  /*
-  let paths = null;
+  let filepaths = null;
   if (objs) {
-    const files = objs.map((obj) => obj.Key);
-    paths = await s3.getFiles(reqId, files);
+    const files = objs.filter((o)=> o.Size > 0).map((obj) => obj.Key);
+    console.log('files', files)
+    filepaths = await s3.downloadFiles(reqId, files);
   }
 
-  if (!(paths instanceof Array)) {
+  if (!(filepaths instanceof Array)) {
     logger.info(`${reqId}: no files to upload`);
     res.status(200).json({ name: "No files found for user" });
   } else {
-    for (const p of paths) {
+    for (const p of filepaths) {
       logger.info(`${reqId}: request link for local file at: ${p}`);
       const pathTokens = p.split("/"); // Output: ["", "tmp", "some uuid", "start of path", "...."]
 
@@ -80,7 +83,7 @@ export default async function handler(
       await axios.put(url, p);
     }
   }
-  */
-
+  
+  logger.info(`${reqId}: completed`)
   res.status(200).json({ name: "Client file assets populated" });
 }
