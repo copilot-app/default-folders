@@ -114,8 +114,9 @@ async function createNode(
 ): Promise<nodeTypes.Node> {
   let mime = "N/A";
   let key = entry.fullPath;
-
-  if (entry?.isFile && !(entry instanceof FileSystemDirectoryEntry)) {
+  
+  if (entry?.isFile) {
+    // @ts-ignore
     mime = await getFileMimeType(entry);
   }
 
