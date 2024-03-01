@@ -11,7 +11,7 @@ import {
   GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
-import * as s3Types from "./s3-types";
+import * as s3Types from "./types";
 
 const BUCKET = process?.env?.BUCKET || "";
 

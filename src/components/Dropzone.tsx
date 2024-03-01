@@ -59,6 +59,7 @@ const Component = (props: {
       (itm: globalThis.DataTransferItem) => domUtils.convertItem(feature, itm)
     );
 
+    
     const droppedFilePaths: Array<string> = [];
     for (const item of items) {
       let path = item.fullPath;
@@ -148,11 +149,11 @@ const Component = (props: {
 
   useEffect(() => {
     if (window) {
-      if ("getAsFileSystemHandle" in window.DataTransferItem.prototype) {
-        setFeature("file-system");
-      }
       if ("webkitGetAsEntry" in window.DataTransferItem.prototype) {
         setFeature("webkit");
+      }
+      else if ("getAsFileSystemHandle" in window.DataTransferItem.prototype) {
+        setFeature("file-system");
       }
     }
   }, []);

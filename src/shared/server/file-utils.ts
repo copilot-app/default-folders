@@ -1,5 +1,4 @@
-import * as s3Types from "./datasources/s3-types";
-import logger from "./logger";
+import * as s3Types from "./s3/types";
 
 type Node = {
   dir: string;

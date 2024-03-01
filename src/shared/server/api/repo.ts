@@ -1,4 +1,5 @@
 import axios from "axios";
+import fs from 'fs'
 import * as t from "./types";
 import { z } from "zod";
 //import { copilotApi } from "copilot-node-sdk";
@@ -63,3 +64,8 @@ export const createFolder = async (filepath: string, channelId: string) => {
     },
   });
 };
+
+export const putFile = async(url: string, localFilePath: string)=>{
+  const fileData = fs.readFileSync(localFilePath)
+  return axios.put(url, fileData)
+}

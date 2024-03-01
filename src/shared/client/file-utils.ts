@@ -1,6 +1,10 @@
 import * as nodeTypes from "../types/node";
+import * as domTypes from './types/dom'
+
 
 const getMime = (signature: string) => {
+  // You can add file signatures here to add
+  // support for new files:
   switch (signature) {
     case "4D7922054":
       return "text/plain";
@@ -32,7 +36,7 @@ const getMime = (signature: string) => {
 };
 
 export async function getFileMimeType(
-  entry: FileSystemFileEntry
+  entry: FileSystemFileEntry | domTypes.FileEntry
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     if (entry.isDirectory) {
@@ -111,7 +115,7 @@ async function createNode(
   let mime = "N/A";
   let key = entry.fullPath;
 
-  if (entry?.isFile && entry instanceof FileSystemFileEntry) {
+  if (entry?.isFile && !(entry instanceof FileSystemDirectoryEntry)) {
     mime = await getFileMimeType(entry);
   }
 
@@ -188,10 +192,10 @@ export const collectFilesFromNodeHierarchy = (nodes: Array<nodeTypes.Node>) => {
       }
     }
   };
-  
-  for (const n of nodes){
-    recurse(n)
+
+  for (const n of nodes) {
+    recurse(n);
   }
 
-  return result
+  return result;
 };

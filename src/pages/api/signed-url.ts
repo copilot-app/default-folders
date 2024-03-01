@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import * as s3 from "../../shared/server/datasources/s3";
+import * as s3 from "../../shared/server/s3/repo";
 import { z } from "zod";
 import {v4 as uuid} from 'uuid'
 import logger from "@/shared/server/logger";

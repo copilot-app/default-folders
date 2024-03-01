@@ -4,7 +4,7 @@ import { v4 as uuid } from "uuid";
 import axios from "axios";
 import logger from "../../shared/server/logger";
 import * as api from "../../shared/server/api/repo";
-import * as s3 from "../../shared/server/datasources/s3";
+import * as s3 from "../../shared/server/s3/repo";
 import * as fileUtils from '../../shared/server/file-utils'
 
 import { copilotApi } from "copilot-node-sdk";
@@ -34,7 +34,6 @@ export default async function handler(
   const reqId = uuid();
   logger.info(`${reqId}: webhook triggered`);
 
-  logger.debug(`${reqId}: body: ${JSON.stringify(req.body)}`)
   const memberId = req.body.data.id;
 
   if (!memberId) {
@@ -61,7 +60,6 @@ export default async function handler(
   let filepaths = null;
   if (objs) {
     const files = objs.filter((o)=> o.Size > 0).map((obj) => obj.Key);
-    console.log('files', files)
     filepaths = await s3.downloadFiles(reqId, files);
   }
 
@@ -76,11 +74,10 @@ export default async function handler(
       // Construct the file path where to upload:
       const localFileTokens = pathTokens.slice(3);
       const remotePath = localFileTokens.join("/");
-      logger.info(`${reqId}: upload file to: ${remotePath}`);
 
-      const url = await api.getUploadUrl(remotePath, channelId)
-      logger.info(`${reqId}: uploading file`);
-      await axios.put(url, p);
+      const url = await api.getUploadUrl(remotePath, channelId)      
+      logger.info(`${reqId}: uploading file: ${p} to ${remotePath}`);
+      await api.putFile(url, p)
     }
   }
   
